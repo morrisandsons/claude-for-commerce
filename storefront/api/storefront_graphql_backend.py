@@ -57,6 +57,7 @@ def cart_gid(value: str) -> str:
 _PRODUCT_FIELDS = """
   id
   title
+  handle
   descriptionHtml
   productType
   tags
@@ -216,6 +217,7 @@ class ShopifyStorefrontAPIBackend(StorefrontBackend):
         self.products: dict[str, ProductDetails] = {}
         self.default_variants: dict[str, str] = {}
         self._variant_images: dict[str, str] = {}
+        self._handles: dict[str, str] = {}  # product/variant gid -> handle, for building real page URLs
 
     # -- Session bookkeeping, mirroring the UCP backend's public surface ----------
 
@@ -306,6 +308,7 @@ class ShopifyStorefrontAPIBackend(StorefrontBackend):
 
     def _remember_product(self, state: _SessionState, record: dict[str, Any]) -> ProductDetails:
         product_id = record["id"]
+        handle = record.get("handle")
         price = float(record["priceRange"]["minVariantPrice"]["amount"])
         currency = record["priceRange"]["minVariantPrice"]["currencyCode"]
         description = _strip_html(record.get("descriptionHtml"))
@@ -332,15 +335,31 @@ class ShopifyStorefrontAPIBackend(StorefrontBackend):
             variants=variants,
         )
         state.currency = currency
+        if handle:
+            self._handles[product_id] = handle
         for variant in variants:
             state.variant_of[variant.product_id] = product_id
             if variant.image_url:
                 self._variant_images[variant.product_id] = variant.image_url
+            if handle:
+                self._handles[variant.product_id] = handle
         if available or variants:
             state.default_variant[product_id] = (available or variants)[0].product_id
             self.default_variants[product_id] = state.default_variant[product_id]
         self.products[product_id] = details
         return details
+
+    def get_product_url(self, product_id: str) -> str | None:
+        """A real, relative /products/... URL for a product or variant id, or None if
+        its handle hasn't been seen yet this process (i.e. it was never actually
+        fetched via search_products/get_product_details)."""
+        handle = self._handles.get(product_id)
+        if not handle:
+            return None
+        if product_id.startswith(_VARIANT_PREFIX):
+            numeric_variant = product_id.rsplit("/", 1)[-1]
+            return f"/products/{handle}?variant={numeric_variant}"
+        return f"/products/{handle}"
 
     def _map_variant(self, record: dict[str, Any], variant: dict[str, Any]) -> Product:
         options = {opt["name"]: opt["value"] for opt in variant.get("selectedOptions") or []}

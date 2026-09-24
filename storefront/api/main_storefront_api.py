@@ -31,6 +31,8 @@ from shopping_agent_runtime import ShoppingAgent
 from .agent_config import build_shopping_config
 from .brand import BrandSource
 from .catalog_warmup import warm_catalog
+from .navigate_tool import NAVIGATE_TO_PRODUCT
+from .rate_limit import ChatRateLimitMiddleware
 from .storefront_graphql_backend import (
     ShopifyStorefrontAPIBackend,
     cart_gid,
@@ -52,6 +54,7 @@ agent = ShoppingAgent(
     skills_dir=REPO_ROOT / "vendor" / "skills" / "shopping",
     config=build_shopping_config(store_name),
     memory_store=InMemoryMemoryStore(),
+    extra_presentation_tools=[NAVIGATE_TO_PRODUCT],
 )
 
 
@@ -73,6 +76,7 @@ host = build_storefront_host(
     cart_extras=cart_extras,
 )
 app = host.app
+app.add_middleware(ChatRateLimitMiddleware)
 
 # Same background catalog warm-up as main.py.
 _host_lifespan = app.router.lifespan_context
