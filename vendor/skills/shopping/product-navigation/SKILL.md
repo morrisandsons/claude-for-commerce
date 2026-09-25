@@ -1,50 +1,59 @@
 ---
 name: product-navigation
-description: The customer wants to see something about a specific product rather than just hear about it — its colours, photos, other details — or wants to browse/pick it themselves. Also applies once a recommendation is settled and it's time to send them to add it to cart themselves, and when YOU are about to ask them a colour/variant question and want to offer the real page as an option. Not needed for a general question you can just answer in text.
+description: You are about to recommend, name, or suggest any specific product — yarn, needles, hooks, a pattern magazine, an accessory, anything. Every specific product recommendation is paired with navigate_to_product; there's no case where you name a product and leave nothing to click. Also covers when the customer asks to see something themselves.
 ---
 
 # Sending the customer to a product page
 
-This assistant never adds anything to cart itself — the customer always adds
-it themselves, on the product's own page, using the store's own button. So
-navigate_to_product isn't just for showing colours — it's how every
-conversation actually ends in a purchase.
+This assistant never adds anything to cart itself, and colour/variant choice
+happens on the product page too — the customer always finishes on the real
+page, using its own picker and its own "Add to cart" button.
 
-Two distinct modes — the difference is who's raising it:
+**Hard rule: every specific product you recommend gets a navigate_to_product
+call.** Yarn, needles, hooks, a stitch pattern book, a project bag — whatever
+it is, if you named it as something to get, pair it with navigate_to_product.
+Never leave a named recommendation as plain text with nothing to click.
 
-## Immediate (immediate: true, the default) — they asked, or it's time to buy
+**Never ask "which colour would you like?" (or any variant question) in
+chat.** That decision happens on the product page's own picker — asking it
+yourself just adds a step the real page already handles better. Once yarn
+and quantity (or the equivalent for a tool/accessory) are settled, navigate
+them there and let the page do the rest.
 
-Redirects right away. Use it for both of these:
+Two modes — the difference is whether the recommendation is settled enough
+to act on, or you're still narrowing things down:
 
-- **They asked to see something**: colours/shades, photos, or want to pick a
-  variant themselves rather than tell you which one.
-- **A recommendation is settled and it's time to buy**: once product, colour,
-  and quantity are decided (see yarn-project-planning's "Handing off to
-  purchase"), navigate them there so they can add it — don't just describe
-  what they should do, send them to do it.
+## Immediate (immediate: true, the default) — ready to act on
 
-## Offered (immediate: false, with a short label) — you're raising it, decision still open
+Redirects right away. This is the default for nearly every product mention:
+
+- A specific yarn, needle, hook, pattern, or accessory is settled as the
+  recommendation — navigate immediately, quantity stated in the same
+  breath. Don't ask about colour first; send them to pick it there.
+- They explicitly asked to see something themselves.
+
+## Offered (immediate: false, with a short label) — still choosing between options
 
 Renders a small clickable chip next to your message instead of redirecting
-them outright — use this whenever YOU are the one bringing up something
-they could look at, but the decision isn't settled yet:
+outright — use this only when you're presenting two or more distinct
+options to choose between (e.g. two different needle materials, wood vs.
+metal), so each option gets its own chip rather than picking one to redirect
+to:
 
-- You're about to ask a colour/variant question yourself ("Which colour
-  would you like?") — pair it with a chip like label: "Check colours" so
-  they can look at the real page if they want, without being redirected
-  just for you asking.
-- You're describing something visual (a texture, a pattern) where seeing it
-  would help, but they haven't asked to see it, and nothing's decided yet.
+- Comparing named alternatives ("the Basix are a straightforward pick, with
+  the Karbonz as a lighter metal-tip option") — one offered chip per named
+  alternative.
+- Describing something visual where seeing it would help, but nothing is
+  decided yet.
 
-Keep the label short and concrete: "Check colours," "See details," "View
+Keep the label short and concrete: "See Basix Needles," "See details," "View
 photos" — not "Click here" or anything vague.
 
 ## When not to use either
 
 - A quick fact question ("what's it made of," "is it machine washable") — just
-  answer from get_product_details, no navigation needed.
-- Early in a conversation before a specific product is settled — navigating
-  too early interrupts the planning questions before they're answered.
+  answer from get_product_details, no navigation needed, since nothing was
+  recommended.
 - Right after you already navigated them somewhere this turn — don't chain
   navigations.
 
@@ -52,11 +61,12 @@ photos" — not "Click here" or anything vague.
 
 - The product_id must already be one search_products or get_product_details
   returned this session — resolve it first if it isn't.
-- For immediate: say what you're doing in the same breath, naturally: "Here's
-  the full range of shades for that one" or "Here's the page to grab that" —
-  not an announcement of a technical action.
-- For offered: ask your question normally in text, and let the chip sit
-  alongside it as an option — don't also describe the chip in words.
+- For immediate: say what you're doing in the same breath, naturally —
+  "That's the Estate 12 Ply, 8 balls — here's the page, pick your colour and
+  add it there" — not an announcement of a technical action, and not a
+  colour question.
+- For offered: describe the options normally in text, and let each chip sit
+  alongside its own option — don't also ask which one they want in words.
 - The customer adds it themselves from the product page — you can keep
   talking with them about anything else, but never call an add/cart tool,
   because none exist on this deployment.

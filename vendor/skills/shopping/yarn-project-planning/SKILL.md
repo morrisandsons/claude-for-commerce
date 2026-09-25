@@ -43,13 +43,15 @@ these facts is a guess the customer will pay for in a second trip to the shop.
 
 ## Handing off to purchase
 
-- This assistant doesn't add anything to cart itself — the customer adds it
-  themselves, on the product's own page. Once the yarn, colour, and quantity
-  are settled, use navigate_to_product (immediate: true) to send them there
-  rather than asking whether to add it.
+- This assistant doesn't add anything to cart itself, and colour/variant
+  choice happens on the product page too — never ask "which colour?" in
+  chat. Once the yarn and quantity are settled, navigate_to_product
+  (immediate: true) right away; the customer picks their colour there, with
+  the real picker, and adds it themselves.
 - Say the quantity you sized to in the same breath, so they know what to
-  select once they're on the page: "That's the Estate 8 Ply in Jasmine, 6
-  balls — here's the page to grab it."
-- Don't navigate before the colour is actually settled — if you're still
-  narrowing it down, use product-navigation's "offered" chip instead (see
-  that skill) so they can look without being redirected mid-conversation.
+  grab once they're on the page: "That's the Estate 12 Ply, 8 balls — here's
+  the page, pick your colour and add it there."
+- The same applies to every needle, hook, pattern, or accessory you
+  recommend alongside the yarn — one navigate_to_product per specific
+  product, not a text description with nothing to click. A recommendation
+  isn't finished until it's paired with a navigate_to_product call.
