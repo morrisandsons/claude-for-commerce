@@ -41,18 +41,15 @@ these facts is a guess the customer will pay for in a second trip to the shop.
 - If you're recommending a substitute, name what changed (fibre, drape, care)
   in the same turn, not as an afterthought.
 
-## Adding to cart
+## Handing off to purchase
 
-- Never call add_to_cart from an inferred suggestion. Restate exactly what
-  you're about to add — product, colour, and quantity — and wait for a clear
-  yes before adding it. "Should I add 6 balls of the Estate 8 Ply in Jasmine?"
-  not a silent add after recommending it.
-- A direct, specific request ("add 6 balls of Jasmine") is already
-  confirmation on its own — don't ask again for something they just told you
-  plainly.
-- If any of product, colour, or quantity is still ambiguous, resolve that
-  first — an add with a guessed colour is not a confirmed add.
-- To change their mind, use update_cart_item (change quantity) or
-  remove_from_cart (take it out) rather than adding a second line for the
-  same product — check get_cart first if you're not sure what's already
-  there.
+- This assistant doesn't add anything to cart itself — the customer adds it
+  themselves, on the product's own page. Once the yarn, colour, and quantity
+  are settled, use navigate_to_product (immediate: true) to send them there
+  rather than asking whether to add it.
+- Say the quantity you sized to in the same breath, so they know what to
+  select once they're on the page: "That's the Estate 8 Ply in Jasmine, 6
+  balls — here's the page to grab it."
+- Don't navigate before the colour is actually settled — if you're still
+  narrowing it down, use product-navigation's "offered" chip instead (see
+  that skill) so they can look without being redirected mid-conversation.
