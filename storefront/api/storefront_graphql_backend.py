@@ -393,6 +393,18 @@ class ShopifyStorefrontAPIBackend(StorefrontBackend):
                     payload = await self._graphql(PRODUCT_BY_ID_QUERY, {"id": product_id})
                     record = payload.get("product")
                     handle = record.get("handle") if record else None
+                if not handle:
+                    # No exception here — the query itself succeeded — but
+                    # nothing usable came back, the same silent-failure shape
+                    # as before, now with the actual response logged so the
+                    # real cause (a genuinely null product? a differently
+                    # shaped record? something else?) is finally visible
+                    # instead of just another opaque 404.
+                    logger.warning(
+                        "get_product_url: query succeeded but no handle for %s — raw response: %s",
+                        product_id,
+                        payload,
+                    )
                 if handle:
                     self._handles[product_id] = handle
             except Exception as exc:  # noqa: BLE001 - deliberately broad: this
