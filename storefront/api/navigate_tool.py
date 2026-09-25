@@ -60,7 +60,7 @@ async def _enrich_navigate(payload: NavigateToProductPayload, context: Enrichmen
             "then navigate using that id.",
             PROVENANCE_GATE,
         )
-    url = context.backend.get_product_url(payload.product_id)
+    url = await context.backend.get_product_url(payload.product_id)
     if not url:
         raise PresentationRefused(
             f"No page URL is available yet for product_id {payload.product_id}."
