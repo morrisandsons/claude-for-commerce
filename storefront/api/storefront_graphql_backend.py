@@ -375,9 +375,24 @@ class ShopifyStorefrontAPIBackend(StorefrontBackend):
         handle = self._handles.get(product_id)
         if not handle:
             try:
-                payload = await self._graphql(NODE_URL_QUERY, {"id": product_id})
-                node = payload.get("node") or {}
-                handle = node.get("handle") or (node.get("product") or {}).get("handle")
+                if product_id.startswith(_VARIANT_PREFIX):
+                    # No dedicated "single variant" root query exists in the
+                    # Storefront API — node() is the only way to resolve a
+                    # lone variant id generically.
+                    payload = await self._graphql(NODE_URL_QUERY, {"id": product_id})
+                    node = payload.get("node") or {}
+                    handle = (node.get("product") or {}).get("handle")
+                else:
+                    # Reuse the same product(id:) query already proven
+                    # reliable elsewhere in this file (get_product_details),
+                    # rather than the more exotic node() query — which,
+                    # for at least one real product id, returned nothing
+                    # usable with no exception raised at all, an unresolved
+                    # discrepancy not worth chasing further when a
+                    # known-working alternative already exists for this case.
+                    payload = await self._graphql(PRODUCT_BY_ID_QUERY, {"id": product_id})
+                    record = payload.get("product")
+                    handle = record.get("handle") if record else None
                 if handle:
                     self._handles[product_id] = handle
             except Exception as exc:  # noqa: BLE001 - deliberately broad: this
