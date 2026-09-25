@@ -116,12 +116,17 @@ async def cart_attach(request: dict, record: host.CurrentSession) -> dict:
 
 
 @app.get("/api/products/{product_id:path}/url")
-async def product_page_url(product_id: str) -> dict:
+async def product_page_url(product_id: str, bare: bool = False) -> dict:
     """A real, relative product page URL for a product or variant id — used by the
     widget to attach a "See details" chip to every product the agent recommends via
     present_products, deterministically, without depending on the model remembering
-    to call navigate_to_product separately every time."""
-    url = backend.get_product_url(product_id)
+    to call navigate_to_product separately every time.
+
+    bare=true always returns the plain product page (no ?variant=...), even for a
+    variant id — the widget uses this for present_products' auto-chips, so several
+    variant-level picks of one product de-duplicate to a single chip rather than
+    one per colour."""
+    url = await backend.get_product_url(product_id, include_variant=not bare)
     if not url:
         raise HTTPException(status_code=404, detail="No page URL available for that product yet")
     title = None
@@ -132,7 +137,10 @@ async def product_page_url(product_id: str) -> dict:
         for product in backend.products.values():
             match = next((v for v in product.variants if v.product_id == product_id), None)
             if match:
-                title = match.title
+                # bare=True means the link points at the general product page,
+                # not this specific colour — use the parent's plain title so
+                # the chip's label doesn't imply a colour it isn't linking to.
+                title = product.title if bare else match.title
                 break
     return {"url": url, "title": title}
 

@@ -158,6 +158,15 @@ mutation CartLinesRemove($cartId: ID!, $lineIds: [ID!]!) {{
 }}
 """
 
+NODE_URL_QUERY = """
+query NodeUrl($id: ID!) {
+  node(id: $id) {
+    ... on Product { handle }
+    ... on ProductVariant { product { handle } }
+  }
+}
+"""
+
 POLICIES_QUERY = """
 {
   shop {
@@ -349,14 +358,30 @@ class ShopifyStorefrontAPIBackend(StorefrontBackend):
         self.products[product_id] = details
         return details
 
-    def get_product_url(self, product_id: str) -> str | None:
-        """A real, relative /products/... URL for a product or variant id, or None if
-        its handle hasn't been seen yet this process (i.e. it was never actually
-        fetched via search_products/get_product_details)."""
+    async def get_product_url(self, product_id: str, include_variant: bool = True) -> str | None:
+        """A real, relative /products/... URL for a product or variant id. Checks the
+        in-memory handle cache first (fast, no network); if that's cold — the id was
+        never seen this process, or the process restarted and lost its cache — falls
+        back to a live, generic lookup by id so this doesn't depend on the exact
+        history of what's been searched this process's lifetime.
+
+        include_variant=False always returns the bare product page, even for a
+        variant id — used when several variant-level picks all belong to the same
+        product (e.g. discussing colour options), so callers can de-duplicate down
+        to one link per product rather than one per colour."""
         handle = self._handles.get(product_id)
         if not handle:
+            try:
+                payload = await self._graphql(NODE_URL_QUERY, {"id": product_id})
+                node = payload.get("node") or {}
+                handle = node.get("handle") or (node.get("product") or {}).get("handle")
+                if handle:
+                    self._handles[product_id] = handle
+            except (GraphQLError, httpx.HTTPStatusError):
+                handle = None
+        if not handle:
             return None
-        if product_id.startswith(_VARIANT_PREFIX):
+        if product_id.startswith(_VARIANT_PREFIX) and include_variant:
             numeric_variant = product_id.rsplit("/", 1)[-1]
             return f"/products/{handle}?variant={numeric_variant}"
         return f"/products/{handle}"
