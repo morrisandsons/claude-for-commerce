@@ -13,6 +13,7 @@ if order tracking is needed.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import dataclass, field
@@ -32,6 +33,8 @@ from shopping_agent import (
     StorefrontBackend,
     UserPreferences,
 )
+
+logger = logging.getLogger(__name__)
 
 STOREFRONT_API_VERSION = "2026-07"
 _TIMEOUT = httpx.Timeout(20.0)
@@ -377,7 +380,18 @@ class ShopifyStorefrontAPIBackend(StorefrontBackend):
                 handle = node.get("handle") or (node.get("product") or {}).get("handle")
                 if handle:
                     self._handles[product_id] = handle
-            except (GraphQLError, httpx.HTTPStatusError):
+            except Exception as exc:  # noqa: BLE001 - deliberately broad: this
+                # fallback should degrade to "no chip" rather than crash the
+                # request, whatever specifically goes wrong. The logging
+                # above is what makes that safe rather than silent.
+                # Don't swallow the real reason — an opaque 404 with no log
+                # trail is exactly what made the last failure hard to
+                # diagnose. Now the actual Shopify error (bad query, missing
+                # scope, whatever it turns out to be) lands in the server
+                # logs instead of disappearing.
+                logger.warning(
+                    "get_product_url: node() fallback failed for %s: %s", product_id, exc
+                )
                 handle = None
         if not handle:
             return None
