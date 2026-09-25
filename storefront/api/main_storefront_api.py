@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+
+from fastapi import HTTPException
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -109,10 +111,30 @@ async def cart_attach(request: dict, record: host.CurrentSession) -> dict:
     value, or the full gid)."""
     cart_id = request.get("cart_id")
     if not cart_id or await backend.attach_cart(record.session_id, cart_gid(cart_id)) is None:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail="The shop doesn't know that cart")
     return await host.cart_payload(record)
+
+
+@app.get("/api/products/{product_id:path}/url")
+async def product_page_url(product_id: str) -> dict:
+    """A real, relative product page URL for a product or variant id — used by the
+    widget to attach a "See details" chip to every product the agent recommends via
+    present_products, deterministically, without depending on the model remembering
+    to call navigate_to_product separately every time."""
+    url = backend.get_product_url(product_id)
+    if not url:
+        raise HTTPException(status_code=404, detail="No page URL available for that product yet")
+    title = None
+    details = backend.products.get(product_id)
+    if details:
+        title = details.title
+    else:
+        for product in backend.products.values():
+            match = next((v for v in product.variants if v.product_id == product_id), None)
+            if match:
+                title = match.title
+                break
+    return {"url": url, "title": title}
 
 
 @app.get("/api/brand")
