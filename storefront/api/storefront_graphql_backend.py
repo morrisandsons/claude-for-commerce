@@ -395,29 +395,31 @@ class ShopifyStorefrontAPIBackend(StorefrontBackend):
                     handle = record.get("handle") if record else None
                 if not handle:
                     # No exception here — the query itself succeeded — but
-                    # nothing usable came back, the same silent-failure shape
-                    # as before, now with the actual response logged so the
-                    # real cause (a genuinely null product? a differently
-                    # shaped record? something else?) is finally visible
-                    # instead of just another opaque 404.
-                    logger.warning(
-                        "get_product_url: query succeeded but no handle for %s — raw response: %s",
-                        product_id,
-                        payload,
+                    # nothing usable came back. Using print() instead of the
+                    # logging module deliberately: logger.warning() calls at
+                    # this exact spot produced zero visible output across
+                    # several real attempts, most likely because whatever
+                    # configures logging for the framework's own loggers
+                    # (visible working examples: shopping_agent_runtime,
+                    # commerce_common) silently disabled loggers it doesn't
+                    # know about — a well-known logging.config gotcha
+                    # (disable_existing_loggers defaults to True). print()
+                    # goes straight to stdout, which Render captures
+                    # regardless of any logging configuration.
+                    print(
+                        f"get_product_url: query succeeded but no handle for {product_id} "
+                        f"— raw response: {payload}",
+                        flush=True,
                     )
                 if handle:
                     self._handles[product_id] = handle
             except Exception as exc:  # noqa: BLE001 - deliberately broad: this
                 # fallback should degrade to "no chip" rather than crash the
-                # request, whatever specifically goes wrong. The logging
-                # above is what makes that safe rather than silent.
-                # Don't swallow the real reason — an opaque 404 with no log
-                # trail is exactly what made the last failure hard to
-                # diagnose. Now the actual Shopify error (bad query, missing
-                # scope, whatever it turns out to be) lands in the server
-                # logs instead of disappearing.
-                logger.warning(
-                    "get_product_url: node() fallback failed for %s: %s", product_id, exc
+                # request, whatever specifically goes wrong. The print above
+                # is what makes that safe rather than silent.
+                print(
+                    f"get_product_url: node()/product() fallback failed for {product_id}: {exc!r}",
+                    flush=True,
                 )
                 handle = None
         if not handle:
